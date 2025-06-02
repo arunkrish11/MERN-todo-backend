@@ -7,7 +7,11 @@ const todoRoutes = require("./routes/todosRoute");
 const userRoutes = require("./routes/userRoute");
 
 // Middlewares
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://mern-todo-nextjs.vercel.app/",
+  })
+);
 app.use(express.json());
 app.use("/api/admin", adminRoutes);
 app.use("/api/todos", todoRoutes);
