@@ -1,25 +1,96 @@
 const User = require("../models/userModel");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 module.exports = {
-  getUsers: async () => {
-    const users = await User.find();
-    return users;
-  },
   userSignUp: async (req, res) => {
-    const user = new User({
-      name: req.body.name,
-      username: req.body.username,
-      email: req.body.email,
-      password: req.body.password,
-    });
+    const { name, username, email, password } = req.body;
+
     try {
-      const newUser = await user.save();
-      res.status(201).json(newUser);
+      // Step 1: Check if the username already exists
+      const existingUser = await User.findOne({ username });
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+      // Step 2: Hash the password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      // Step 3: Create the new user
+      const newUser = new User({
+        name,
+        username,
+        email,
+        password: hashedPassword,
+      });
+
+      // Step 4: Save to DB
+      const savedUser = await newUser.save();
+
+      // Step 5: Create JWT token (optional but useful)
+      const token = jwt.sign(
+        { username: user.username },
+        process.env.JWT_SECRET,
+        {
+          expiresIn: "1h",
+        }
+      );
+
+      // Step 6: Respond with token and user info
+      res.status(201).json({
+        token,
+        user: {
+          id: savedUser._id,
+          username: savedUser.username,
+          name: savedUser.name,
+          email: savedUser.email,
+        },
+      });
     } catch (err) {
-      res.status(400).json({ message: err.message });
+      console.error("Signup error:", err);
+      res.status(500).json({ message: "Server error" });
     }
   },
-  getUser: async (req, res)=> {
-    const user = await User.find()
-  }
+  userLogin: async (req, res) => {
+    const { username, password } = req.body;
+    try {
+      // Step 1: Find the user by username
+      const user = await User.findOne({ username });
+      if (!user) {
+        return res.status(400).json({ message: "User not exist" });
+      }
+      // Step 2: Compare the password
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: "Invalid password" });
+      }
+      // Step 3: Create and send JWT token
+      const token = jwt.sign(
+        { username: user.username },
+        process.env.JWT_SECRET,
+        {
+          expiresIn: "1h",
+        }
+      );
+      res
+        .status(200)
+        .json({ token, user: { username: user.username, id: user._id } });
+    } catch (err) {
+      console.error("Login error:", err);
+      res.status(500).json({ message: "Server error" });
+    }
+  },
+  getUser: async (req, res) => {
+    try {
+      const user = await User.findOne({ username: req.user.username }).select(
+        "-password"
+      );
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      return res.status(200).json(user);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Server error" });
+    }
+  },
 };

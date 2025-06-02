@@ -1,14 +1,20 @@
 const Todo = require("../models/TodoModel");
 
 module.exports = {
-  getToDo: async () => {
-    const todos = await Todo.find().sort({ createdAt: -1 });
-    return todos;
+  getToDo: async (req, res) => {
+    try {
+      const username = req.user.username; // auth middleware must set this
+      const todos = await Todo.find({ username }).sort({ createdAt: -1 });
+      return todos;
+    } catch (err) {
+      console.error("Error fetching todos:", err);
+      return res.status(500).json({ message: "Failed to fetch todos" });
+    }
   },
 
   createToDo: async (req, res) => {
     const todo = new Todo({
-      username: "krish",
+      username: req.user.username,
       toDo: req.body.text,
     });
     try {

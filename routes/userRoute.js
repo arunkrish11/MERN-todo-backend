@@ -1,28 +1,29 @@
 const express = require("express");
 const router = express.Router();
 const UserController = require("../controllers/UserController");
-
-router.get("/", async (req, res) => {
-  try {
-    const users = await UserController.getUsers();
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ err: "Ger user error" });
-  }
-});
+const auth = require("../middleware/auth");
 
 router.post("/signup", async (req, res) => {
-  await UserController.userSignUp(req, res);
-  console.log(req.body);
-  // res.redirect('./todos')
+  try {
+    await UserController.userSignUp(req, res);
+  } catch (error) {
+    res.status(500).json({ error: "User signup error" });
+  }
 });
 
 router.post("/login", async (req, res) => {
   try {
-    const user = await UserController.getUser(req, res);
-    res.json(user);
+    await UserController.userLogin(req, res);
   } catch (error) {
-    res.status(500).json({error: "User login error" })
+    res.status(500).json({ error: "User login error" });
+  }
+});
+
+router.get("/details", auth, async (req, res) => {
+  try {
+    await UserController.getUser(req, res); // handles res itself
+  } catch (err) {
+    res.status(500).json({ err: "Get user error" });
   }
 });
 
