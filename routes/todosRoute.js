@@ -6,8 +6,12 @@ const auth = require("../middleware/auth");
 // Get all todos
 router.get("/", auth, async (req, res) => {
   try {
-    const todos = await ToDoController.getToDo(req);
-    res.status(200).json(todos);
+    if (req.user.username) {
+      const todos = await ToDoController.getToDo(req);
+      res.status(200).json(todos);
+    } else {
+      res.status(500).json({ error: "Please login" });
+    }
   } catch (error) {
     res.status(500).json({ error: "Get todos error" });
   }

@@ -5,12 +5,20 @@ const jwt = require("jsonwebtoken");
 module.exports = {
   userSignUp: async (req, res) => {
     const { name, username, email, password } = req.body;
-
     try {
-      // Step 1: Check if the username already exists
-      const existingUser = await User.findOne({ username });
+      // Step 1: Check if username or email already exists
+      const existingUser = await User.findOne({
+        $or: [{ username }, { email }],
+      });
       if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
+        // Decide which field is duplicated
+        let errorMessage = "Username or Email already exists";
+        if (existingUser.username === username) {
+          errorMessage = "Username already exists";
+        } else if (existingUser.email === email) {
+          errorMessage = "Email already exists";
+        }
+        return res.status(400).json({ message: errorMessage });
       }
       // Step 2: Hash the password
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -21,19 +29,16 @@ module.exports = {
         email,
         password: hashedPassword,
       });
-
       // Step 4: Save to DB
       const savedUser = await newUser.save();
-
       // Step 5: Create JWT token (optional but useful)
       const token = jwt.sign(
-        { username: user.username },
+        { username: savedUser.username },
         process.env.JWT_SECRET,
         {
           expiresIn: "1h",
         }
       );
-
       // Step 6: Respond with token and user info
       res.status(201).json({
         token,
@@ -46,7 +51,7 @@ module.exports = {
       });
     } catch (err) {
       console.error("Signup error:", err);
-      res.status(500).json({ message: "Server error" });
+      res.status(500).json({ message: "Sign Up: Server error" });
     }
   },
   userLogin: async (req, res) => {
@@ -75,7 +80,7 @@ module.exports = {
         .json({ token, user: { username: user.username, id: user._id } });
     } catch (err) {
       console.error("Login error:", err);
-      res.status(500).json({ message: "Server error" });
+      res.status(500).json({ message: "Log In: Server error" });
     }
   },
   getUser: async (req, res) => {
@@ -90,7 +95,7 @@ module.exports = {
       return res.status(200).json(user);
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ message: "Server error" });
+      return res.status(500).json({ message: "Get User: Server error" });
     }
   },
 };
